@@ -34,11 +34,11 @@ class speechRecognizerModule(ALModule):
         except Exception, e:
             pass
         self.asr = ALProxy("ALSpeechRecognition")
-        vocabulary = ["yes", "no", "please"]
+        vocabulary = ["rene", "bianca", "lara", "demi", "selma"]
         self.asr.setVocabulary(vocabulary, False )
         self.asr.setVisualExpression(True)
         self.word = ""
-        
+    
     def startListening(self):
         global memorySpeech
         # Subscribe to the WordRecognized event:
@@ -66,8 +66,8 @@ class speechRecognizerModule(ALModule):
     def onWordRecognized(self, key, value, message):
         global memorySpeech
         if(len(value) > 1 and value[1] >= 0.3):
-            # Unsubscribe to the event to avoid repetitions
-            memorySpeech.unsubscribeToEvent("WordRecognized", "SpeechRecognizer")
+            # Stop speech recognition.
+            self.stopListening()
             self.word = value[0]
 
 class HumanGreeterModule(ALModule):
@@ -86,14 +86,19 @@ class HumanGreeterModule(ALModule):
             memoryFace.unsubscribeToEvent("FaceDetected", "HumanGreeter")
         except Exception, e:
             pass
-        self.previousTimeStampInSeconds = 0
+        self.timeFaceDetectionStartedInSeconds = 0
+        self.timeFirstRecognitionInSeconds = 0
+        self.previousTimeInSeconds = 0
         self.face = ""
+        self.leds = ALProxy("ALLeds")
     
     def startFaceDetection(self):
         global memorySpeech
         # Subscribe to the WordRecognized event:
         try:
+            self.timeFaceDetectionStartedInSeconds = int(time.time())
             memoryFace.subscribeToEvent("FaceDetected", "HumanGreeter", "onFaceDetected")
+            self.leds.fadeRGB("FaceLeds", 255*256*0 + 256*0 + 255, 0.2)
         except Exception, e:
             pass
 
@@ -102,6 +107,7 @@ class HumanGreeterModule(ALModule):
         # Subscribe to the WordRecognized event:
         try:
             memoryFace.unsubscribeToEvent("FaceDetected", "HumanGreeter")
+            self.leds.fadeRGB("FaceLeds", 255*256*100 + 256*100 + 100, 0.2)
         except Exception, e:
             pass
 
@@ -119,29 +125,49 @@ class HumanGreeterModule(ALModule):
         detected.
         Leave this doc string else this method will not be bound!
         """
-        global memoryFace, timeStampInSeconds
+        global memoryFace, timeInSeconds
         val = memoryFace.getData("FaceDetected")
         if(val and isinstance(val, list) and len(val) >= 2):
             # We detected faces !
             # For each face, we can read its shape info and ID.
             # First Field = TimeStamp.
             # Second Field = array of face_Info's.
+            timeInSeconds = val[0][0]
+            # After calling subscribeToEvent() the face detection module will generate some events.
+            # The reason is unknown, they might be older events from just before the call to unsubscribeToEvent(), although the timestamp
+            # is new.
+            # Therefore we ignore the events generated right after the call to startFaceDetection().
+            if int(time.time()) - self.timeFaceDetectionStartedInSeconds < 3:
+                return
+            # Set timeFirstRecognitionInSeconds if this is the start of a new recognition.
+            if self.timeFirstRecognitionInSeconds == 0:
+                print "**************** started"
+                self.timeFirstRecognitionInSeconds = timeInSeconds
             faceInfoArray = val[1]
             try:
                 faceInfo = faceInfoArray[0]
+                Time_Filtered_Reco_Info = faceInfoArray[1]
                 # First Field = Shape info.
                 faceShapeInfo = faceInfo[0]
                 # Second Field = Extra info (empty for now).
                 faceExtraInfo = faceInfo[1]
-                print "face detected!, confidence = " + str(faceExtraInfo[1])
+                print "face detected!, confidence = " + str(faceExtraInfo[1]) + ", length = " + str(len(Time_Filtered_Reco_Info))
                 if faceExtraInfo[1] > 0.5:
-                    timeStampInSeconds = val[0][0]
-                    if timeStampInSeconds - self.previousTimeStampInSeconds < 3:
-                        return
-                    # Unsubscribe to the event to avoid repetitions
-                    memoryFace.unsubscribeToEvent("FaceDetected", "HumanGreeter")
-                    self.previousTimeStampInSeconds = timeStampInSeconds
+                    # Stop face detection.
+                    self.stopFaceDetection()
                     self.face = faceExtraInfo[2]
+                    # Indicate the end of this recognition.
+                    self.timeFirstRecognitionInSeconds = 0
+                else:
+                    if self.timeFirstRecognitionInSeconds != 0 and timeInSeconds - self.timeFirstRecognitionInSeconds > 3:
+                        # Face is not recognized for more then three seconds, so we consider it to be unknown.
+                        # Stop face detection.
+                        self.stopFaceDetection()
+                        self.face = "unknown"
+                        # Indicate the end of this recognition.
+                        self.timeFirstRecognitionInSeconds = 0
+                self.previousTimeInSeconds = timeInSeconds
+        
             except Exception, e:
                 print str(e)
 
@@ -150,12 +176,20 @@ def learnFace(face):
     # Create a proxy to ALFaceDetection
     try:
       faceProxy = ALProxy("ALFaceDetection")
-      # First forget face to be enable to learn it again.
+      # First forget face to be enable learning it again.
       faceProxy.forgetPerson(face)
       faceProxy.learnFace(face)
     except Exception, e:
       print str(e)
-      exit(1)
+
+
+def unlearnAllFaces():
+    # Create a proxy to ALFaceDetection
+    try:
+      faceProxy = ALProxy("ALFaceDetection")
+      faceProxy.clearDatabase()
+    except Exception, e:
+      print str(e)
 
 
 def main():
@@ -187,31 +221,45 @@ def main():
         p.exit() # kill previous instance
 
     SpeechRecognizer = speechRecognizerModule("SpeechRecognizer")
-
-    print "going to learn face"
-    learnFace("rene")
-    print "ready to learn face"
-
     HumanGreeter = HumanGreeterModule("HumanGreeter")
     tts = ALProxy("ALTextToSpeech")
 
     try:
-        SpeechRecognizer.startListening()
-        HumanGreeter.startFaceDetection()
+        unlearnAllFaces()
         while True:
-            word = SpeechRecognizer.getWord()
-            if word != "":
-                tts.say("you said, " + word)
-                print "word recognized!", word
-                time.sleep(2)
+            tts.say("let's greet some people")
+            HumanGreeter.startFaceDetection()
+            face = ""
+            while True:
+                face = HumanGreeter.getFace();
+                if face != "":
+                    break
+                time.sleep(0.5)
+                
+            if face == "unknown":
+                tts.say("what is your name?")
                 SpeechRecognizer.startListening()
-            face = HumanGreeter.getFace();
-            if face != "":
-                tts.say("Hello, " + face)
-                print "face recognized!", face
-                time.sleep(2)
-                HumanGreeter.startFaceDetection()
-            time.sleep(0.5)
+                startTime = int(time.time())
+                name = ""
+                while True:
+                    if int(time.time()) - startTime > 5:
+                        # Timeout.
+                        SpeechRecognizer.stopListening()
+                        break
+                    name = SpeechRecognizer.getWord()
+                    if name != "":
+                        break
+                    time.sleep(0.5)
+
+                if name != "":
+                    tts.say("nice to meet you, " + name + ",please keep still for a moment")
+                    print "going to learn face"
+                    learnFace(name)
+                    print "ready to learn face"
+                    tts.say("thank you, I will remember you!")
+            else:
+                tts.say("hi again," + face)
+
     except Exception, e:
         print str(e)
         myBroker.shutdown()
