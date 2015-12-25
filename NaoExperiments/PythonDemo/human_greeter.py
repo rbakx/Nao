@@ -6,6 +6,8 @@
 import sys
 import time
 import re
+import subprocess
+import json
 
 from naoqi import ALProxy
 from naoqi import ALBroker
@@ -16,6 +18,63 @@ from naoqi import ALModule
 SpeechRecognizer = None
 FaceRecognizer = None
 ReactToTouch = None
+
+
+# runShellCommandWait(cmd) will block until 'cmd' is finished.
+# This because the communicate() method is used to communicate to interact with the process through the redirected pipes.
+def runShellCommandWait(cmd):
+    return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True).communicate()[0]
+
+
+# The below class is an alternative to the Nao speech recognition.
+# The Nao speech recognition only works with predefined words while with the Google Speech to Text
+# all speech can be recognized. The below class is not a module in the NAOqi sense because we do not
+# register it with ALModule.__init__(). This is not needed as we do not use subscribeToEvent().
+# Instead we just wait for Google to response.
+class speechRecognitionGoogleModule():
+    def __init__(self):
+        try:
+            self.recorder = ALProxy("ALAudioRecorder")
+            self.player = ALProxy('ALAudioPlayer')
+            self.leds = ALProxy("ALLeds")
+        except Exception, e:
+            print str(e)
+    def speechToText(self):
+        try:
+            self.player.playFile("/usr/share/naoqi/wav/begin_reco.wav")
+            # Start recording 16000 Hz, ogg format, front microphone.
+            self.recorder.startMicrophonesRecording("/home/nao/speech.ogg", "ogg", 16000, (0,0,1,0))
+            for _ in range(8):
+            # Twinkle eye leds to indicate Nao is listening.
+                self.leds.fadeRGB("FaceLeds", 255*256*0 + 256*0 + 0, 0.2)
+                self.leds.fadeRGB("FaceLeds", 255*256*0 + 256*0 + 255, 0.2)
+            self.recorder.stopMicrophonesRecording()
+            self.player.playFile("/usr/share/naoqi/wav/end_reco.wav")
+            runShellCommandWait('ffmpeg -y -i speech.ogg speech.flac')
+            stdOutAndErr = runShellCommandWait('curl -s -X POST --header "content-type: audio/x-flac; rate=16000;" --data-binary @"speech.flac" "http://www.google.com/speech-api/v2/recognize?client=chromium&lang=en_US&key=AIzaSyC3qc74SxJI7fIv747QPlSQPS0rl4AnSAM"')
+        except Exception, e:
+            print str(e)
+        text = ""
+        # Google always replies with an empty JSON response '{"result":[]}' on the first line.
+        # If there is speech, The second line contains the actual JSON result.
+        # If there is no speech, there is no second line so we have to check this.
+        if len(stdOutAndErr.splitlines()) != 2:
+            # Return empty text, intent and value to indicate the voice command is invalid.
+            return text
+        stdOutAndErr = stdOutAndErr.splitlines()[1]
+        # Now stdOutAndErr contains the JSON response from the STT engine.
+        decoded = json.loads(stdOutAndErr)
+        try:
+            confidence = decoded["result"][0]["alternative"][0]["confidence"]  # not a string but a float
+        except Exception, e:
+            print str(e)
+        try:
+            # Use encode() to convert the Unicode strings contained in JSON to ASCII.
+            text = decoded["result"][0]["alternative"][0]["transcript"].encode('ascii', 'ignore')
+        except Exception, e:
+            print str(e)
+
+        return text
 
 
 class ReactToTouchModule(ALModule):
@@ -48,7 +107,7 @@ class ReactToTouchModule(ALModule):
             return ""
 
 
-class speechRecognitionModule(ALModule):
+class speechRecognitionNaoModule(ALModule):
     """ A simple module able to react to speech events.
     Leave this doc string else this module will not be bound!
 
@@ -83,13 +142,21 @@ class speechRecognitionModule(ALModule):
         except Exception, e:
             pass
 
-    def getWord(self):
-        if self.word != "":
-            tmpWord = self.word
-            self.word = ""
-            return tmpWord
-        else:
-            return ""
+    def speechToText(self):
+        self.startListening()
+        startTime = int(time.time())
+        wordRecognized = ""
+        while True:
+            if int(time.time()) - startTime > 5:
+                # Timeout.
+                self.stopListening()
+                break
+            if self.word != "":
+                wordRecognized = self.word
+                self.word = ""
+                break
+            time.sleep(0.5)
+        return wordRecognized
 
     def onWordRecognized(self, key, value, message):
         if(len(value) > 1 and value[1] >= 0.3):
@@ -217,7 +284,7 @@ class FaceRecognitionModule(ALModule):
                 # Second Field = Extra info (empty for now).
                 faceExtraInfo = faceInfo[1]
                 #print "face detected!, confidence = " + str(faceExtraInfo[1]) + ", length = " + str(len(Time_Filtered_Reco_Info))
-                if faceExtraInfo[1] > 0.5:
+                if faceExtraInfo[1] > 0.7:
                     # Stop face detection.
                     self.stopFaceDetection()
                     self.face = faceExtraInfo[2]
@@ -254,7 +321,11 @@ class MyClass(GeneratedClass):
 
         # Warning: module names must be global variables.
         # The name given to the constructor must be the name of the variable.
-        SpeechRecognizer = speechRecognitionModule("SpeechRecognizer")
+        
+        # Enable one of the two next lines for Nao speech recognition or Google speech recognition
+        #SpeechRecognizer = speechRecognitionNaoModule("SpeechRecognizer")
+        SpeechRecognizer = speechRecognitionGoogleModule()
+        
         FaceRecognizer = FaceRecognitionModule("FaceRecognizer")
         ReactToTouch = ReactToTouchModule("ReactToTouch")
         self.tts = ALProxy("ALTextToSpeech")
@@ -288,22 +359,11 @@ class MyClass(GeneratedClass):
                 
             if doContinue and face == "unknown":
                 self.tts.say("what is your name?")
-                SpeechRecognizer.startListening()
-                startTime = int(time.time())
-                name = ""
-                while True:
-                    # Possibility to interrupt by touch.
-                    if re.search('.*bumper.*', ReactToTouch.getTouch(), re.IGNORECASE):
-                        doContinue = False
-                        break
-                    if int(time.time()) - startTime > 5:
-                        # Timeout.
-                        SpeechRecognizer.stopListening()
-                        break
-                    name = SpeechRecognizer.getWord()
-                    if name != "":
-                        break
-                    time.sleep(0.5)
+                name = SpeechRecognizer.speechToText()
+                # Possibility to interrupt by touch.
+                if re.search('.*bumper.*', ReactToTouch.getTouch(), re.IGNORECASE):
+                    doContinue = False
+                    break
             
                 if doContinue and name != "":
                     self.tts.say("nice to meet you, " + name + ",please keep still for a moment")
@@ -316,8 +376,11 @@ class MyClass(GeneratedClass):
         # will fail because the modules are already registered!
         FaceRecognizer.stopFaceDetection()
         FaceRecognizer.stopFaceTracking()
-        SpeechRecognizer.stopListening()
-        SpeechRecognizer.exit()
+        
+        # For Google speech recognition instead of Nao speech recognition disable the next two lines
+        # SpeechRecognizer.stopListening()
+        # SpeechRecognizer.exit()
+
         FaceRecognizer.exit()
         ReactToTouch.exit()
         # Uncomment the below line in Choregraphe.
