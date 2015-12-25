@@ -50,8 +50,8 @@ class speechRecognitionGoogleModule():
                 self.leds.fadeRGB("FaceLeds", 255*256*0 + 256*0 + 255, 0.2)
             self.recorder.stopMicrophonesRecording()
             self.player.playFile("/usr/share/naoqi/wav/end_reco.wav")
-            runShellCommandWait('ffmpeg -y -i speech.ogg speech.flac')
-            stdOutAndErr = runShellCommandWait('curl -s -X POST --header "content-type: audio/x-flac; rate=16000;" --data-binary @"speech.flac" "http://www.google.com/speech-api/v2/recognize?client=chromium&lang=en_US&key=AIzaSyC3qc74SxJI7fIv747QPlSQPS0rl4AnSAM"')
+            runShellCommandWait('ffmpeg -y -i /home/nao/speech.ogg /home/nao/speech.flac')
+            stdOutAndErr = runShellCommandWait('curl -s -X POST --header "content-type: audio/x-flac; rate=16000;" --data-binary @"/home/nao/speech.flac" "http://www.google.com/speech-api/v2/recognize?client=chromium&lang=en_US&key=AIzaSyC3qc74SxJI7fIv747QPlSQPS0rl4AnSAM"')
         except Exception, e:
             print str(e)
         text = ""
@@ -336,7 +336,17 @@ class MyClass(GeneratedClass):
         
     def onUnload(self):
         # put clean-up code here
-        pass
+        # Important to call exit on the modules created, otherwise the next time ALModule.__init__(self, name)
+        # will fail because the modules are already registered!
+        FaceRecognizer.stopFaceDetection()
+        FaceRecognizer.stopFaceTracking()
+        FaceRecognizer.exit()
+        
+        # For Google speech recognition instead of Nao speech recognition disable the next two lines
+        # SpeechRecognizer.stopListening()
+        # SpeechRecognizer.exit()
+
+        ReactToTouch.exit()
     
     def onInput_onStart(self):
         global SpeechRecognizer, FaceRecognizer, ReactToTouch
@@ -371,18 +381,8 @@ class MyClass(GeneratedClass):
                     self.tts.say("thank you, I will remember you!")
             elif doContinue:
                 self.tts.say("hi again," + face)
-
-        # Important to call exit on the modules created, otherwise the next time ALModule.__init__(self, name)
-        # will fail because the modules are already registered!
-        FaceRecognizer.stopFaceDetection()
-        FaceRecognizer.stopFaceTracking()
-        
-        # For Google speech recognition instead of Nao speech recognition disable the next two lines
-        # SpeechRecognizer.stopListening()
-        # SpeechRecognizer.exit()
-
-        FaceRecognizer.exit()
-        ReactToTouch.exit()
+    
+        self.onUnload()
         # Uncomment the below line in Choregraphe.
         #self.onStopped() #activate the output of the box
 
