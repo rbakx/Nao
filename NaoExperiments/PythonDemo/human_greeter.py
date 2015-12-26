@@ -336,8 +336,10 @@ class MyClass(GeneratedClass):
         pass
         
     def onUnload(self):
-        # This method will be called when the onInput_onStart() thread ends or when the behavior is stopped.
         # Put clean-up code here.
+        # This method will be called when the onInput_onStart() thread ends or when the behavior is stopped.
+        # The behavior can be stopped in Choregraphe using the red 'Stop' button, or by using the 'Run Behavior'
+        # box and activating the 'onStop' input. In Python this means the ALBehaviorManager method stopBehavior() is called.
         # First set self.doContinue to False otherwise the onInput_onStart() thread will continue if it is still running.
         self.doContinue = False
         # Important to call exit on the modules created, otherwise the next time ALModule.__init__(self, name)
@@ -396,7 +398,7 @@ class MyClass(GeneratedClass):
             elif self.doContinue:
                 self.tts.say("hi again," + face)
     
-        # Uncomment the below line in Choregraphe.
+        # Uncomment the line below when running in Choregraphe.
         #self.onStopped() #activate the output of the box
 
     def onInput_onStop(self):
