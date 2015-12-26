@@ -329,60 +329,73 @@ class MyClass(GeneratedClass):
         FaceRecognizer = FaceRecognitionModule("FaceRecognizer")
         ReactToTouch = ReactToTouchModule("ReactToTouch")
         self.tts = ALProxy("ALTextToSpeech")
+        self.doContinue = False
 
     def onLoad(self):
         #put initialization code here
         pass
         
     def onUnload(self):
-        # put clean-up code here
+        # This method will be called when the onInput_onStart() thread ends or when the behavior is stopped.
+        # Put clean-up code here.
+        # First set self.doContinue to False otherwise the onInput_onStart() thread will continue if it is still running.
+        self.doContinue = False
         # Important to call exit on the modules created, otherwise the next time ALModule.__init__(self, name)
         # will fail because the modules are already registered!
-        FaceRecognizer.stopFaceDetection()
-        FaceRecognizer.stopFaceTracking()
-        FaceRecognizer.exit()
+        # Use try...except here in case the (one of the) modules have already exitted.
+        try:
+            FaceRecognizer.stopFaceDetection()
+            FaceRecognizer.stopFaceTracking()
+            FaceRecognizer.exit()
+        except Exception, e:
+            pass
         
-        # For Google speech recognition instead of Nao speech recognition disable the next two lines
-        # SpeechRecognizer.stopListening()
-        # SpeechRecognizer.exit()
+        # For Google speech recognition instead of Nao speech recognition disable the next try...except block.
+#        try:
+#            SpeechRecognizer.stopListening()
+#            SpeechRecognizer.exit()
+#        except Exception, e:
+#            pass
 
-        ReactToTouch.exit()
+        try:
+            ReactToTouch.exit()
+        except Exception, e:
+            pass
     
     def onInput_onStart(self):
         global SpeechRecognizer, FaceRecognizer, ReactToTouch
         FaceRecognizer.unlearnAllFaces()
-        doContinue = True
+        self.doContinue = True
         self.tts.say("let's greet some people")
         FaceRecognizer.startFaceTracking()
-        while doContinue:
+        while self.doContinue:
             FaceRecognizer.startFaceDetection()
             face = ""
-            while True:
+            while self.doContinue:
                 # Possibility to interrupt by touch.
                 if re.search('.*bumper.*', ReactToTouch.getTouch(), re.IGNORECASE):
-                    doContinue = False
+                    self.doContinue = False
                     break
                 face = FaceRecognizer.getFace();
                 if face != "":
                     break
                 time.sleep(0.5)
                 
-            if doContinue and face == "unknown":
+            if self.doContinue and face == "unknown":
                 self.tts.say("what is your name?")
                 name = SpeechRecognizer.speechToText()
                 # Possibility to interrupt by touch.
                 if re.search('.*bumper.*', ReactToTouch.getTouch(), re.IGNORECASE):
-                    doContinue = False
+                    self.doContinue = False
                     break
             
-                if doContinue and name != "":
-                    self.tts.say("nice to meet you, " + name + ",please keep still for a moment")
+                if self.doContinue and name != "":
+                    self.tts.say("nice to meet you, " + name + ", please keep still for a moment")
                     FaceRecognizer.learnFace(name)
                     self.tts.say("thank you, I will remember you!")
-            elif doContinue:
+            elif self.doContinue:
                 self.tts.say("hi again," + face)
     
-        self.onUnload()
         # Uncomment the below line in Choregraphe.
         #self.onStopped() #activate the output of the box
 
