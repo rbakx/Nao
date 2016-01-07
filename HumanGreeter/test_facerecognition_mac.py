@@ -228,7 +228,7 @@ while True:
     print('"c" to create and fill a new database')
     print('"d" to remove a face by name from the database')
     print('"x" to delete the database')
-    print('"l" to take a picture and add to the database')
+    print('"l" to list the database')
     print('"q" to quit')
     line = raw_input(': ')
     if line == 'q':
@@ -239,17 +239,9 @@ while True:
         faceRecognition.addFaceToList(faceListId, "./snapshot.jpg", line)
     elif line == 'c':
         faceRecognition.createFaceList(faceListId, "newlist")
-        faceRecognition.addFaceToList(faceListId, "/Users/fhict/Downloads/Faces/face1.jpg", "face 1")
-        faceRecognition.addFaceToList(faceListId, "/Users/fhict/Downloads/Faces/face2.jpg", "face 2")
-        faceRecognition.addFaceToList(faceListId, "/Users/fhict/Downloads/Faces/face3.jpg", "face 3")
-        faceRecognition.addFaceToList(faceListId, "/Users/fhict/Downloads/Faces/face4.jpg", "face 4")
-        faceRecognition.addFaceToList(faceListId, "/Users/fhict/Downloads/Faces/face5.jpg", "face 5")
-        faceRecognition.addFaceToList(faceListId, "/Users/fhict/Downloads/Faces/face6.jpg", "face 6")
-        faceRecognition.addFaceToList(faceListId, "/Users/fhict/Downloads/Faces/face7.jpg", "face 7")
-        faceRecognition.addFaceToList(faceListId, "/Users/fhict/Downloads/Faces/face8.jpg", "face 8")
-        faceRecognition.addFaceToList(faceListId, "/Users/fhict/Downloads/Faces/face9.jpg", "face 9")
-        faceRecognition.addFaceToList(faceListId, "/Users/fhict/Downloads/Faces/face10.jpg", "face 10")
-        faceRecognition.addFaceToList(faceListId, "/Users/fhict/Downloads/Faces/reneb.jpg", "ReneB")
+#        for i in range(20):
+#            faceRecognition.addFaceToList(faceListId, "/Users/fhict/Downloads/Faces/face" + str(i) + ".jpg", "face " + str(i))
+#        faceRecognition.addFaceToList(faceListId, "/Users/fhict/Downloads/Faces/reneb.jpg", "ReneB")
     elif line == 'd':
         line = raw_input('enter name of face to be removed\n: ')
         faceRecognition.deleteFaceFromList(faceListId, line)
