@@ -7,7 +7,7 @@ import os
 
 class FaceRecognition():
     def __init__(self):
-        self.key = 'b269028dbbf64564934cd2a1261890f9'
+        self.key = '43acf60f71204ca78c4c09a1cb2c6916'
 
     def getFaceIdFromNewFace(self, pic):
         headers = {

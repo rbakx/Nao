@@ -15,7 +15,8 @@ from naoqi import ALBroker
 from naoqi import ALModule
 
 
-# Global variables. These must be global otherwise the callback functions will report for example: 'python object not found FaceDetector'.
+# Global variables. Module names must be global otherwise the callback functions will report for example:
+# 'python object not found FaceDetector'.
 SpeechRecognizer = None
 FaceDetector = None
 ReactToTouch = None
@@ -27,11 +28,20 @@ def runShellCommandWait(cmd):
     return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True).communicate()[0]
 
 
+def testConnected():
+    try :
+        stri = "http://www.google.com"
+        data = urllib.urlopen(stri)
+        return True
+    except Exception, e:
+        return False
+
+
 # The below class is an alternative to the Nao speech recognition.
 # The Nao speech recognition only works with predefined words while with the Google Speech to Text
 # all speech can be recognized. The below class is not a module in the NAOqi sense because we do not
 # register it with ALModule.__init__(). This is not needed as we do not use subscribeToEvent().
-# Instead we just wait for Google to response.
+# Instead we just wait for Google to respond.
 class speechRecognitionGoogleModule():
     def __init__(self):
         try:
@@ -41,7 +51,13 @@ class speechRecognitionGoogleModule():
         except Exception, e:
             print str(e)
     def speechToText(self):
+        text = ""
         try:
+            # Stop recording if recorder is still recording, added for robustness.
+            try:
+                self.recorder.stopMicrophonesRecording()
+            except Exception, e:
+                pass
             self.player.playFile("/usr/share/naoqi/wav/begin_reco.wav")
             # Start recording 16000 Hz, ogg format, front microphone.
             self.recorder.startMicrophonesRecording("/home/nao/speech.ogg", "ogg", 16000, (0,0,1,0))
@@ -55,12 +71,12 @@ class speechRecognitionGoogleModule():
             stdOutAndErr = runShellCommandWait('curl -s -X POST --header "content-type: audio/x-flac; rate=16000;" --data-binary @"/home/nao/speech.flac" "http://www.google.com/speech-api/v2/recognize?client=chromium&lang=en_US&key=AIzaSyC3qc74SxJI7fIv747QPlSQPS0rl4AnSAM"')
         except Exception, e:
             print str(e)
-        text = ""
+            return text
         # Google always replies with an empty JSON response '{"result":[]}' on the first line.
         # If there is speech, The second line contains the actual JSON result.
         # If there is no speech, there is no second line so we have to check this.
         if len(stdOutAndErr.splitlines()) != 2:
-            # Return empty text, intent and value to indicate the voice command is invalid.
+            # Return empty text to indicate the speech is invalid.
             return text
         stdOutAndErr = stdOutAndErr.splitlines()[1]
         # Now stdOutAndErr contains the JSON response from the STT engine.
@@ -69,11 +85,13 @@ class speechRecognitionGoogleModule():
             confidence = decoded["result"][0]["alternative"][0]["confidence"]  # not a string but a float
         except Exception, e:
             print str(e)
+            pass
         try:
             # Use encode() to convert the Unicode strings contained in JSON to ASCII.
             text = decoded["result"][0]["alternative"][0]["transcript"].encode('ascii', 'ignore')
         except Exception, e:
             print str(e)
+            pass
 
         return text
 
@@ -97,7 +115,7 @@ class ReactToTouchModule(ALModule):
         self.touched = ""
     
     def onTouched(self, strVarName, value):
-        self.touched = value[0][0]
+        self.touched = str(value)
 
     def getTouch(self):
         if self.touched != "":
@@ -124,7 +142,7 @@ class speechRecognitionNaoModule(ALModule):
         except Exception, e:
             pass
         self.asr = ALProxy("ALSpeechRecognition")
-        vocabulary = ["rene", "bianca", "lara", "demi", "selma"]
+        vocabulary = ["rene", "james"]
         self.asr.setVocabulary(vocabulary, False )
         self.asr.setVisualExpression(True)
         self.word = ""
@@ -209,7 +227,9 @@ class FaceDetectionModule(ALModule):
         except Exception, e:
             print str(e)
 
-    
+    def lookForward(self):
+        self.tracker.lookAt([1.0, 0.0, 0.0], 0, 0.20, False)
+
     def startFaceDetection(self):
         # Subscribe to the FaceDetected event:
         try:
@@ -238,14 +258,42 @@ class FaceDetectionModule(ALModule):
             self.motion.setStiffnesses("Head", 1.0)
         except Exception, e:
             print str(e)
+            pass
 
     def stopFaceTracking(self):
         try:
             # Stop face tracking.
             self.tracker.stopTracker()
-            self.tracker.unregisterAllTargets()
+            self.tracker.unregisterTarget("Face")
         except Exception, e:
             print str(e)
+            pass
+
+    def startSoundTracking(self):
+        try:
+            # Start face tracking.
+            self.soundLocation = ALProxy("ALSoundLocalization")
+            self.soundLocation.setParameter("Sensitivity", 0.7)
+            self.tracker.setEffector("None")
+            self.tracker.registerTarget("Sound", [0.5, 0.1])
+            self.tracker.setRelativePosition([-0.3, 0.0, 0.0, 0.1, 0.1, 0.3])
+            self.tracker.setMode("Head")  # Only move head.
+            self.tracker.track("Sound")
+            # Set stiffness of head to 1.0 as this is required for face tracking.
+            self.motion.setStiffnesses("Head", 1.0)
+        except Exception, e:
+            print str(e)
+            pass
+
+    def stopSoundTracking(self):
+        try:
+            # Stop face tracking.
+            self.tracker.setEffector("None")
+            self.tracker.stopTracker()
+            self.tracker.unregisterTarget("Sound")
+        except Exception, e:
+            print str(e)
+            pass
 
     def getFace(self):
         if self.face != "":
@@ -270,7 +318,7 @@ class FaceDetectionModule(ALModule):
 
 class FaceRecognition():
     def __init__(self):
-        self.key = 'b269028dbbf64564934cd2a1261890f9'
+        self.key = '43acf60f71204ca78c4c09a1cb2c6916'
 
     def getFaceIdFromNewFace(self, pic):
         headers = {
@@ -284,6 +332,7 @@ class FaceRecognition():
             'returnFaceAttributes': 'age',
         })
 
+        faceId = None
         try:
             conn = httplib.HTTPSConnection('api.projectoxford.ai')
             conn.request("POST", "/face/v1.0/detect?%s" % params, open(pic,"rb").read(), headers)
@@ -292,7 +341,6 @@ class FaceRecognition():
             conn.close()
             decoded = json.loads(data)
             # Use encode() to convert the Unicode strings contained in JSON to ASCII.
-            faceId = ""
             try:
                 faceId = decoded[0]["faceId"].encode('ascii', 'ignore')
             except:
@@ -300,6 +348,7 @@ class FaceRecognition():
             return faceId
         except Exception,e:
             print "getFaceIdFromNewFace exception: " + str(e)
+            return faceId
 
     def createFaceList(self, faceListId, facelistName):
         headers = {
@@ -322,8 +371,10 @@ class FaceRecognition():
             response = conn.getresponse()
             data = response.read()
             conn.close()
+            return True
         except Exception,e:
             print "createFaceList exception: " + str(e)
+            return False
 
     def deleteFaceList(self, faceListId):
         headers = {
@@ -340,8 +391,10 @@ class FaceRecognition():
             response = conn.getresponse()
             data = response.read()
             conn.close()
+            return True
         except Exception,e:
             print "deleteFaceList exception: " + str(e)
+            return False
 
     def addFaceToList(self, faceListId, pic, userData):
         headers = {
@@ -362,8 +415,10 @@ class FaceRecognition():
             data = response.read()
             print "added face: " + data
             conn.close()
+            return True
         except Exception,e:
             print "addFaceToList exception: " + str(e)
+            return False
 
     def deleteFaceFromList(self, faceListId, name):
         faceId = self.nameToFaceId(faceListId, name)
@@ -381,8 +436,10 @@ class FaceRecognition():
             response = conn.getresponse()
             data = response.read()
             conn.close()
+            return True
         except Exception,e:
             print "deleteFaceFromList exception: " + str(e)
+            return False
 
     def getRecognizedFaceId(self, faceListId, newFaceId):
         headers = {
@@ -399,6 +456,8 @@ class FaceRecognition():
             "maxNumOfCandidatesReturned":1\
         }'
         
+        faceId = ""
+        confidence = 0
         try:
             conn = httplib.HTTPSConnection('api.projectoxford.ai')
             conn.request("POST", "/face/v1.0/findsimilars?%s" % params, body, headers)
@@ -406,8 +465,6 @@ class FaceRecognition():
             data = response.read()
             conn.close()
             decoded = json.loads(data)
-            faceId = ""
-            confidence = 0
             try:
                 # Use encode() to convert the Unicode strings contained in JSON to ASCII.
                 faceId = decoded[0]["persistedFaceId"].encode('ascii', 'ignore')
@@ -417,6 +474,7 @@ class FaceRecognition():
             return faceId, confidence
         except Exception,e:
             print "getRecognizedFaceId exception: " + str(e)
+            return faceId, confidence
 
     def getFaceList(self, faceListId):
         headers = {
@@ -427,6 +485,7 @@ class FaceRecognition():
         params = urllib.urlencode({
         })
 
+        decoded = None
         try:
             userData = ""
             conn = httplib.HTTPSConnection('api.projectoxford.ai')
@@ -438,6 +497,7 @@ class FaceRecognition():
             return decoded
         except Exception,e:
             print "getFaceList exception: " + str(e)
+            return decoded
 
     def getFaceNames(self, faceListId):
         faceNames = []
@@ -490,11 +550,6 @@ class MyClass(GeneratedClass):
     def __init__(self):
         global SpeechRecognizer, FaceDetector, ReactToTouch
         GeneratedClass.__init__(self)
-        # We need this broker to be able to construct
-        # NAOqi modules and subscribe to other modules
-        # The broker must stay alive until the program exists
-
-
         # Warning: module names must be global variables.
         # The name given to the constructor must be the name of the variable.
         
@@ -526,6 +581,7 @@ class MyClass(GeneratedClass):
         try:
             FaceDetector.stopFaceDetection()
             FaceDetector.stopFaceTracking()
+            FaceDetector.stopSoundTracking()
             FaceDetector.exit()
         except Exception, e:
             pass
@@ -544,25 +600,45 @@ class MyClass(GeneratedClass):
     
     def onInput_onStart(self):
         global SpeechRecognizer, FaceDetector, ReactToTouch
-        FaceDetector.unlearnAllFaces()
+        
+        self.audiodevice = ALProxy("ALAudioDevice")
+        self.audiodevice.setOutputVolume(50)
+        
+        while testConnected() == False:
+            self.tts.say("not connected to the internet")
+            if re.search('.*bumper.*', ReactToTouch.getTouch(), re.IGNORECASE):
+                self.finish()
+                return
+            time.sleep(5)
+        
         self.doContinue = True
         self.tts.say("let's greet some people")
-        FaceDetector.startFaceTracking()
         while self.doContinue:
             FaceDetector.startFaceDetection()
+            FaceDetector.startSoundTracking()
             face = ""
+            count = 0
             while self.doContinue:
+                if count == 10:
+                    FaceDetector.lookForward()
+                    count = 0
+                count = count + 1
                 # Possibility to interrupt by touch.
                 if re.search('.*bumper.*', ReactToTouch.getTouch(), re.IGNORECASE):
-                    self.doContinue = False
-                    # Stop face detection.
-                    FaceDetector.stopFaceDetection()
-                    break
+                    self.finish()
+                    return
+                print "getting face"
                 face = FaceDetector.getFace();
                 if face != "":
                     break
                 time.sleep(0.5)
+            # When the behaviour was stopped in Choregraphe by using the red 'Stop' button, onUnload() will be
+            # called which will set self.doContinue to False. If this is the case, this thread must also be stopped.
+            if self.doContinue == False:
+                return
             print "face detected, going to take a picture"
+            self.tts.say("let me check on you")
+            FaceDetector.startFaceTracking()
             try:
                 photoCapture = ALProxy("ALPhotoCapture")
                 photoCapture.setResolution(3) # 1280x960 resolution
@@ -583,18 +659,25 @@ class MyClass(GeneratedClass):
                     name = SpeechRecognizer.speechToText()
                     # Possibility to interrupt by touch.
                     if re.search('.*bumper.*', ReactToTouch.getTouch(), re.IGNORECASE):
-                        self.doContinue = False
-                        break
+                        self.finish()
+                        return
                 
                     if self.doContinue and name != "":
                         self.tts.say("nice to meet you, " + name + ", please keep still for a moment")
-                        self.faceRecognition.addFaceToList(self.faceListId, "/home/nao/reneb/snapshot.jpg", name)
-                        self.tts.say("thank you, I will remember you!")
+                        if self.faceRecognition.addFaceToList(self.faceListId, "/home/nao/reneb/snapshot.jpg", name) == True:
+                            self.tts.say("thank you, I will remember you!")
+                        else:
+                            self.tts.say("could not add face to facelist")
                 elif self.doContinue:
+                    # Uncomment the line below when running in Choregraphe.
+                    #self.onRecognized()
                     self.tts.say("hi again," + name)
             else:
                 self.tts.say("sorry, could not take a good picture")
+            time.sleep(10.0)
 
+    def finish(self):
+        self.doContinue = False
         # Uncomment the line below when running in Choregraphe.
         #self.onStopped() #activate the output of the box
 

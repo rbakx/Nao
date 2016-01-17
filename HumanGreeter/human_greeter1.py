@@ -123,7 +123,7 @@ class speechRecognitionNaoModule(ALModule):
         except Exception, e:
             pass
         self.asr = ALProxy("ALSpeechRecognition")
-        vocabulary = ["rene", "bianca", "lara", "demi", "selma"]
+        vocabulary = ["rene", "james"]
         self.asr.setVocabulary(vocabulary, False )
         self.asr.setVisualExpression(True)
         self.word = ""
