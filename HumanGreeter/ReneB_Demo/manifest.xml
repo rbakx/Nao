@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<package uuid="humangreeter2-99b7d0">
+<package uuid="reneb_demo-8ba547">
  <names>
-  <name lang="en_US">HumanGreeter2</name>
+  <name lang="en_US">ReneB_Demo</name>
  </names>
  <supportedLanguages>
   <language>en_US</language>

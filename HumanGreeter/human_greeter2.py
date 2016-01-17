@@ -60,15 +60,15 @@ class speechRecognitionGoogleModule():
                 pass
             self.player.playFile("/usr/share/naoqi/wav/begin_reco.wav")
             # Start recording 16000 Hz, ogg format, front microphone.
-            self.recorder.startMicrophonesRecording("/home/nao/speech.ogg", "ogg", 16000, (0,0,1,0))
+            self.recorder.startMicrophonesRecording("/home/nao/reneb/speech.ogg", "ogg", 16000, (0,0,1,0))
             for _ in range(8):
             # Twinkle eye leds to indicate Nao is listening.
                 self.leds.fadeRGB("FaceLeds", 255*256*0 + 256*0 + 0, 0.2)
                 self.leds.fadeRGB("FaceLeds", 255*256*0 + 256*0 + 255, 0.2)
             self.recorder.stopMicrophonesRecording()
             self.player.playFile("/usr/share/naoqi/wav/end_reco.wav")
-            runShellCommandWait('ffmpeg -y -i /home/nao/speech.ogg /home/nao/speech.flac')
-            stdOutAndErr = runShellCommandWait('curl -s -X POST --header "content-type: audio/x-flac; rate=16000;" --data-binary @"/home/nao/speech.flac" "http://www.google.com/speech-api/v2/recognize?client=chromium&lang=en_US&key=AIzaSyC3qc74SxJI7fIv747QPlSQPS0rl4AnSAM"')
+            runShellCommandWait('ffmpeg -y -i /home/nao/reneb/speech.ogg /home/nao/reneb/speech.flac')
+            stdOutAndErr = runShellCommandWait('curl -s -X POST --header "content-type: audio/x-flac; rate=16000;" --data-binary @"/home/nao/reneb/speech.flac" "http://www.google.com/speech-api/v2/recognize?client=chromium&lang=en_US&key=AIzaSyC3qc74SxJI7fIv747QPlSQPS0rl4AnSAM"')
         except Exception, e:
             print str(e)
             return text
@@ -116,6 +116,7 @@ class ReactToTouchModule(ALModule):
     
     def onTouched(self, strVarName, value):
         self.touched = str(value)
+        print str(value)
 
     def getTouch(self):
         if self.touched != "":
@@ -216,7 +217,7 @@ class FaceDetectionModule(ALModule):
             faceProxy.forgetPerson(face)
             faceProxy.learnFace(face)
         except Exception, e:
-            print str(e)
+            print "learnFace exception: " + str(e)
 
 
     def unlearnAllFaces(self):
@@ -225,7 +226,7 @@ class FaceDetectionModule(ALModule):
             faceProxy = ALProxy("ALFaceDetection")
             faceProxy.clearDatabase()
         except Exception, e:
-            print str(e)
+            print "unlearnAllFaces exception: " + str(e)
 
     def lookForward(self):
         self.tracker.lookAt([1.0, 0.0, 0.0], 0, 0.20, False)
@@ -238,7 +239,7 @@ class FaceDetectionModule(ALModule):
             # Set eye leds.
             self.leds.fadeRGB("FaceLeds", 255*256*0 + 256*0 + 255, 0.2)
         except Exception, e:
-            print str(e)
+            print "startFaceDetection exception: " + str(e)
 
     def stopFaceDetection(self):
         # Unsubscribe to the FaceDetected event:
@@ -246,7 +247,7 @@ class FaceDetectionModule(ALModule):
             self.memory.unsubscribeToEvent("FaceDetected", "FaceDetector")
             self.leds.fadeRGB("FaceLeds", 255*256*100 + 256*100 + 100, 0.2)
         except Exception, e:
-            print str(e)
+            print "stopFaceDetection exception: " + str(e)
 
     def startFaceTracking(self):
         try:
@@ -257,7 +258,7 @@ class FaceDetectionModule(ALModule):
             # Set stiffness of head to 1.0 as this is required for face tracking.
             self.motion.setStiffnesses("Head", 1.0)
         except Exception, e:
-            print str(e)
+            print "startFaceTracking exception: " + str(e)
             pass
 
     def stopFaceTracking(self):
@@ -266,7 +267,7 @@ class FaceDetectionModule(ALModule):
             self.tracker.stopTracker()
             self.tracker.unregisterTarget("Face")
         except Exception, e:
-            print str(e)
+            print "stopFaceTracking exception: " + str(e)
             pass
 
     def startSoundTracking(self):
@@ -282,7 +283,7 @@ class FaceDetectionModule(ALModule):
             # Set stiffness of head to 1.0 as this is required for face tracking.
             self.motion.setStiffnesses("Head", 1.0)
         except Exception, e:
-            print str(e)
+            print "startSoundTracking exception: " + str(e)
             pass
 
     def stopSoundTracking(self):
@@ -292,7 +293,7 @@ class FaceDetectionModule(ALModule):
             self.tracker.stopTracker()
             self.tracker.unregisterTarget("Sound")
         except Exception, e:
-            print str(e)
+            print "stopSoundTracking exception: " + str(e)
             pass
 
     def getFace(self):
@@ -570,7 +571,9 @@ class MyClass(GeneratedClass):
         
     def onUnload(self):
         # Put clean-up code here.
-        # This method will be called when the onInput_onStart() thread ends or when the behavior is stopped.
+        # This method will be called when the onInput_onStart() thread ends which will activate the onStopped output
+        # AND this onStopped output is connected to the onStopped output of the Choregraphe bounding box.
+        # This method is also called when the behavior is stopped.
         # The behavior can be stopped in Choregraphe using the red 'Stop' button, or by using the 'Run Behavior'
         # box and activating the 'onStop' input. In Python this means the ALBehaviorManager method stopBehavior() is called.
         # First set self.doContinue to False otherwise the onInput_onStart() thread will continue if it is still running.
@@ -580,8 +583,17 @@ class MyClass(GeneratedClass):
         # Use try...except here in case the (one of the) modules have already exitted.
         try:
             FaceDetector.stopFaceDetection()
+        except Exception, e:
+            pass
+        try:
             FaceDetector.stopFaceTracking()
+        except Exception, e:
+            pass
+        try:
             FaceDetector.stopSoundTracking()
+        except Exception, e:
+            pass
+        try:
             FaceDetector.exit()
         except Exception, e:
             pass
@@ -606,7 +618,7 @@ class MyClass(GeneratedClass):
         
         while testConnected() == False:
             self.tts.say("not connected to the internet")
-            if re.search('.*bumper.*', ReactToTouch.getTouch(), re.IGNORECASE):
+            if re.search('.*bumper.*true.*', ReactToTouch.getTouch(), re.IGNORECASE):
                 self.finish()
                 return
             time.sleep(5)
@@ -624,7 +636,7 @@ class MyClass(GeneratedClass):
                     count = 0
                 count = count + 1
                 # Possibility to interrupt by touch.
-                if re.search('.*bumper.*', ReactToTouch.getTouch(), re.IGNORECASE):
+                if re.search('.*bumper.*true.*', ReactToTouch.getTouch(), re.IGNORECASE):
                     self.finish()
                     return
                 print "getting face"
@@ -658,7 +670,7 @@ class MyClass(GeneratedClass):
                     self.tts.say("what is your name?")
                     name = SpeechRecognizer.speechToText()
                     # Possibility to interrupt by touch.
-                    if re.search('.*bumper.*', ReactToTouch.getTouch(), re.IGNORECASE):
+                    if re.search('.*bumper.*true.*', ReactToTouch.getTouch(), re.IGNORECASE):
                         self.finish()
                         return
                 
@@ -674,9 +686,21 @@ class MyClass(GeneratedClass):
                     self.tts.say("hi again," + name)
             else:
                 self.tts.say("sorry, could not take a good picture")
-            time.sleep(10.0)
+            time.sleep(5.0)
 
     def finish(self):
+        try:
+            FaceDetector.stopFaceDetection()
+        except Exception, e:
+            pass
+        try:
+            FaceDetector.stopFaceTracking()
+        except Exception, e:
+            pass
+        try:
+            FaceDetector.stopSoundTracking()
+        except Exception, e:
+            pass
         self.doContinue = False
         # Uncomment the line below when running in Choregraphe.
         #self.onStopped() #activate the output of the box
