@@ -1,6 +1,8 @@
 # -*- encoding: UTF-8 -*-
-""" Say 'hello, you' each time a human face is detected
-
+""" Say 'hello, you' each time a human face is detected.
+If no face is detected sound tracking is activated.
+If a face is detected face tracking is activated.
+If a face is recognized Nao sais hello and waves its hand.
 """
 
 import sys
@@ -96,6 +98,7 @@ class speechRecognitionGoogleModule():
         return text
 
 
+# Class to react on touch.
 class ReactToTouchModule(ALModule):
     """ A simple module able to react to sensor events.
     Leave this doc string else this module will not be bound!
@@ -127,6 +130,7 @@ class ReactToTouchModule(ALModule):
             return ""
 
 
+# Class for native Nao speech recognition. This recognition must be fed with predefined keywords.
 class speechRecognitionNaoModule(ALModule):
     """ A simple module able to react to speech events.
     Leave this doc string else this module will not be bound!
@@ -184,6 +188,8 @@ class speechRecognitionNaoModule(ALModule):
             self.stopListening()
             self.word = value[0]
 
+# Face detection class to detect faces.
+# This class also contains face tracking and sound tracking functionality.
 class FaceDetectionModule(ALModule):
     """ A simple module able to react to facedetection events.
     Leave this doc string else this module will not be bound!
@@ -317,6 +323,8 @@ class FaceDetectionModule(ALModule):
             self.face = "detected"
 
 
+# The below class is an alternative to the Nao face recognition, which is quite limited.
+# This class makes use of cloud services to recognize faces.
 class FaceRecognition():
     def __init__(self):
         self.key = '43acf60f71204ca78c4c09a1cb2c6916'
@@ -541,12 +549,12 @@ class FaceRecognition():
         return faceId
 
 
-# Remove this dummy GeneratedClass() when running in Choregraphe.
+# ********** REMOVE THIS DUMMY GeneratedClass() WHEN RUNNING IN CHOREGRAPHE **********
 class GeneratedClass():
     def __init__(self):
         pass
 
-
+# Main Class containing the standard block methods. When used in Choregraphe this class is initiated automatically by NAOqi.
 class MyClass(GeneratedClass):
     def __init__(self):
         global SpeechRecognizer, FaceDetector, ReactToTouch
@@ -571,9 +579,7 @@ class MyClass(GeneratedClass):
         
     def onUnload(self):
         # Put clean-up code here.
-        # This method will be called when the onInput_onStart() thread ends which will activate the onStopped output
-        # AND this onStopped output is connected to the onStopped output of the Choregraphe bounding box.
-        # This method is also called when the behavior is stopped.
+        # This method is called when the behavior is stopped.
         # The behavior can be stopped in Choregraphe using the red 'Stop' button, or by using the 'Run Behavior'
         # box and activating the 'onStop' input. In Python this means the ALBehaviorManager method stopBehavior() is called.
         # First set self.doContinue to False otherwise the onInput_onStart() thread will continue if it is still running.
@@ -681,7 +687,7 @@ class MyClass(GeneratedClass):
                         else:
                             self.tts.say("could not add face to facelist")
                 elif self.doContinue:
-                    # Uncomment the line below when running in Choregraphe.
+                    # ********** UNCOMMENT THE LINE BELOW WHEN RUNNING IN CHOREGRAPHE **********
                     #self.onRecognized()
                     self.tts.say("hi again," + name)
             else:
@@ -702,15 +708,16 @@ class MyClass(GeneratedClass):
         except Exception, e:
             pass
         self.doContinue = False
-        # Uncomment the line below when running in Choregraphe.
+        # ********** UNCOMMENT THE LINE BELOW WHEN RUNNING IN CHOREGRAPHE **********
         #self.onStopped() #activate the output of the box
 
     def onInput_onStop(self):
-        self.onUnload() #it is recommended to reuse the clean-up as the box is stopped
+        # This method will be called when the onInput_onStart() thread ends which will activate the onStopped output
+        # AND this onStopped output is connected to the onStopped output of the Choregraphe bounding box.
         self.onStopped() #activate the output of the box
 
 
-# Remove main() when running in Choregraphe.
+# ********** REMOVE main() WHEN RUNNING IN CHOREGRAPHE **********
 def main():
     """ Main entry point
 

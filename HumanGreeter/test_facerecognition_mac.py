@@ -1,10 +1,13 @@
 #!/usr/bin/python
 ########### Python 2.7 #############
+# Script to communicate with the Microsoft Oxford project face API.
 import httplib, urllib, base64
 import json
 import readline
 import os
 
+
+# Class to communicate with the Microsoft Oxford project face API.
 class FaceRecognition():
     def __init__(self):
         self.key = '43acf60f71204ca78c4c09a1cb2c6916'

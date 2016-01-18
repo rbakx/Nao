@@ -2232,7 +2232,7 @@ class MyClass(GeneratedClass):
                             <Resource name="Speech" type="Lock" timeout="0" />
                             <Resource name="Speech recognition" type="Lock" timeout="0" />
                         </Box>
-                        <Box name="HumenGreeter" id="5" localization="8" tooltip="" x="596" y="106">
+                        <Box name="HumenGreeter" id="5" localization="8" tooltip="" x="605" y="124">
                             <bitmap>media/images/box/box-diagram.png</bitmap>
                             <script language="4">
                                 <content>
@@ -2243,7 +2243,6 @@ class MyClass(GeneratedClass):
                             <Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" />
                             <Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" />
                             <Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="4" />
-                            <Output name="output" type="1" type_size="1" nature="2" inner="0" tooltip="" id="5" />
                             <Timeline enable="0">
                                 <BehaviorLayer name="behavior_layer1">
                                     <BehaviorKeyframe name="keyframe1" index="1">
@@ -2253,8 +2252,10 @@ class MyClass(GeneratedClass):
                                                 <script language="4">
                                                     <content>
                                                         <![CDATA[# -*- encoding: UTF-8 -*-
-""" Say 'hello, you' each time a human face is detected
-
+""" Say 'hello, you' each time a human face is detected.
+If no face is detected sound tracking is activated.
+If a face is detected face tracking is activated.
+If a face is recognized Nao sais hello and waves its hand.
 """
 
 import sys
@@ -2350,6 +2351,7 @@ class speechRecognitionGoogleModule():
         return text
 
 
+# Class to react on touch.
 class ReactToTouchModule(ALModule):
     """ A simple module able to react to sensor events.
     Leave this doc string else this module will not be bound!
@@ -2381,6 +2383,7 @@ class ReactToTouchModule(ALModule):
             return ""
 
 
+# Class for native Nao speech recognition. This recognition must be fed with predefined keywords.
 class speechRecognitionNaoModule(ALModule):
     """ A simple module able to react to speech events.
     Leave this doc string else this module will not be bound!
@@ -2438,6 +2441,8 @@ class speechRecognitionNaoModule(ALModule):
             self.stopListening()
             self.word = value[0]
 
+# Face detection class to detect faces.
+# This class also contains face tracking and sound tracking functionality.
 class FaceDetectionModule(ALModule):
     """ A simple module able to react to facedetection events.
     Leave this doc string else this module will not be bound!
@@ -2571,6 +2576,8 @@ class FaceDetectionModule(ALModule):
             self.face = "detected"
 
 
+# The below class is an alternative to the Nao face recognition, which is quite limited.
+# This class makes use of cloud services to recognize faces.
 class FaceRecognition():
     def __init__(self):
         self.key = '43acf60f71204ca78c4c09a1cb2c6916'
@@ -2795,6 +2802,7 @@ class FaceRecognition():
         return faceId
 
 
+# Main Class containing the standard block methods. When used in Choregraphe this class is initiated automatically by NAOqi.
 class MyClass(GeneratedClass):
     def __init__(self):
         global SpeechRecognizer, FaceDetector, ReactToTouch
@@ -2819,9 +2827,7 @@ class MyClass(GeneratedClass):
 
     def onUnload(self):
         # Put clean-up code here.
-        # This method will be called when the onInput_onStart() thread ends which will activate the onStopped output
-        # AND this onStopped output is connected to the onStopped output of the Choregraphe bounding box.
-        # This method is also called when the behavior is stopped.
+        # This method is called when the behavior is stopped.
         # The behavior can be stopped in Choregraphe using the red 'Stop' button, or by using the 'Run Behavior'
         # box and activating the 'onStop' input. In Python this means the ALBehaviorManager method stopBehavior() is called.
         # First set self.doContinue to False otherwise the onInput_onStart() thread will continue if it is still running.
@@ -2929,7 +2935,7 @@ class MyClass(GeneratedClass):
                         else:
                             self.tts.say("could not add face to facelist")
                 elif self.doContinue:
-                    # Uncomment the line below when running in Choregraphe.
+                    # ********** UNCOMMENT THE LINE BELOW WHEN RUNNING IN CHOREGRAPHE **********
                     self.onRecognized()
                     self.tts.say("hi again," + name)
             else:
@@ -2950,11 +2956,12 @@ class MyClass(GeneratedClass):
         except Exception, e:
             pass
         self.doContinue = False
-        # Uncomment the line below when running in Choregraphe.
+        # ********** UNCOMMENT THE LINE BELOW WHEN RUNNING IN CHOREGRAPHE **********
         self.onStopped() #activate the output of the box
 
     def onInput_onStop(self):
-        self.onUnload() #it is recommended to reuse the clean-up as the box is stopped
+        # This method will be called when the onInput_onStart() thread ends which will activate the onStopped output
+        # AND this onStopped output is connected to the onStopped output of the Choregraphe bounding box.
         self.onStopped() #activate the output of the box]]>
 </content>
                                                 </script>
@@ -3325,10 +3332,10 @@ class MyClass(GeneratedClass):
                                             </Box>
                                             <Link inputowner="2" indexofinput="2" outputowner="1" indexofoutput="5" />
                                             <Link inputowner="4" indexofinput="2" outputowner="3" indexofoutput="4" />
-                                            <Link inputowner="0" indexofinput="5" outputowner="1" indexofoutput="4" />
                                             <Link inputowner="3" indexofinput="2" outputowner="0" indexofoutput="2" />
                                             <Link inputowner="7" indexofinput="2" outputowner="4" indexofoutput="4" />
                                             <Link inputowner="1" indexofinput="2" outputowner="7" indexofoutput="3" />
+                                            <Link inputowner="0" indexofinput="4" outputowner="1" indexofoutput="4" />
                                         </Diagram>
                                     </BehaviorKeyframe>
                                 </BehaviorLayer>
@@ -6504,8 +6511,8 @@ class MyClass(GeneratedClass):
                         <Link inputowner="2" indexofinput="2" outputowner="6" indexofoutput="7" />
                         <Link inputowner="6" indexofinput="2" outputowner="2" indexofoutput="4" />
                         <Link inputowner="5" indexofinput="2" outputowner="6" indexofoutput="5" />
-                        <Link inputowner="6" indexofinput="2" outputowner="5" indexofoutput="5" />
                         <Link inputowner="6" indexofinput="2" outputowner="0" indexofoutput="2" />
+                        <Link inputowner="6" indexofinput="2" outputowner="5" indexofoutput="4" />
                     </Diagram>
                 </BehaviorKeyframe>
             </BehaviorLayer>

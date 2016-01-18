@@ -1,5 +1,6 @@
 # -*- encoding: UTF-8 -*-
-""" Say 'hello, you' each time a human face is detected
+""" Set the volume when pressing the front and rear head tactile sensors.
+The volume set is confirmed by speech.
 
 """
 
@@ -12,7 +13,7 @@ from naoqi import ALModule
 # 'python object not found FaceDetector'.
 SetVolume = None
 
-
+# Class to set volume and confirm by speech.
 class SetVolumeModule(ALModule):
     """ A simple module able to react to sensor events.
     Leave this doc string else this module will not be bound!
@@ -53,6 +54,7 @@ class GeneratedClass():
         pass
 
 
+# Main Class containing the standard block methods. When used in Choregraphe this class is initiated automatically by NAOqi.
 class MyClass(GeneratedClass):
     def __init__(self):
         global SetVolume
