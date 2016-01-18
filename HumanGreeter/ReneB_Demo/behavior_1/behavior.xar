@@ -2232,7 +2232,7 @@ class MyClass(GeneratedClass):
                             <Resource name="Speech" type="Lock" timeout="0" />
                             <Resource name="Speech recognition" type="Lock" timeout="0" />
                         </Box>
-                        <Box name="HumenGreeter" id="5" localization="8" tooltip="" x="605" y="124">
+                        <Box name="HumanGreeter" id="5" localization="8" tooltip="" x="604" y="132">
                             <bitmap>media/images/box/box-diagram.png</bitmap>
                             <script language="4">
                                 <content>
@@ -2243,6 +2243,7 @@ class MyClass(GeneratedClass):
                             <Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" />
                             <Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" />
                             <Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="4" />
+                            <Output name="output" type="1" type_size="1" nature="2" inner="0" tooltip="" id="5" />
                             <Timeline enable="0">
                                 <BehaviorLayer name="behavior_layer1">
                                     <BehaviorKeyframe name="keyframe1" index="1">
@@ -2304,7 +2305,7 @@ class speechRecognitionGoogleModule():
             self.player = ALProxy('ALAudioPlayer')
             self.leds = ALProxy("ALLeds")
         except Exception, e:
-            print str(e)
+            print "speechRecognitionGoogleModule exception: " + str(e)
     def speechToText(self):
         text = ""
         try:
@@ -2325,7 +2326,7 @@ class speechRecognitionGoogleModule():
             runShellCommandWait('ffmpeg -y -i /home/nao/reneb/speech.ogg /home/nao/reneb/speech.flac')
             stdOutAndErr = runShellCommandWait('curl -s -X POST --header "content-type: audio/x-flac; rate=16000;" --data-binary @"/home/nao/reneb/speech.flac" "http://www.google.com/speech-api/v2/recognize?client=chromium&lang=en_US&key=AIzaSyC3qc74SxJI7fIv747QPlSQPS0rl4AnSAM"')
         except Exception, e:
-            print str(e)
+            print "speechToText exception: " + str(e)
             return text
         # Google always replies with an empty JSON response '{"result":[]}' on the first line.
         # If there is speech, The second line contains the actual JSON result.
@@ -2339,13 +2340,13 @@ class speechRecognitionGoogleModule():
         try:
             confidence = decoded["result"][0]["alternative"][0]["confidence"]  # not a string but a float
         except Exception, e:
-            print str(e)
+            print "speechToText exception: " + str(e)
             pass
         try:
             # Use encode() to convert the Unicode strings contained in JSON to ASCII.
             text = decoded["result"][0]["alternative"][0]["transcript"].encode('ascii', 'ignore')
         except Exception, e:
-            print str(e)
+            print "speechToText exception: " + str(e)
             pass
 
         return text
@@ -2372,7 +2373,6 @@ class ReactToTouchModule(ALModule):
 
     def onTouched(self, strVarName, value):
         self.touched = str(value)
-        print str(value)
 
     def getTouch(self):
         if self.touched != "":
@@ -2827,7 +2827,9 @@ class MyClass(GeneratedClass):
 
     def onUnload(self):
         # Put clean-up code here.
-        # This method is called when the behavior is stopped.
+        # This method is called when the onInput_onStart() thread ends which will activate the onStopped output
+        # AND this onStopped output is connected to the onStopped output of the Choregraphe bounding box.
+        # This method is also called when the behavior is stopped in Choregraphe.
         # The behavior can be stopped in Choregraphe using the red 'Stop' button, or by using the 'Run Behavior'
         # box and activating the 'onStop' input. In Python this means the ALBehaviorManager method stopBehavior() is called.
         # First set self.doContinue to False otherwise the onInput_onStart() thread will continue if it is still running.
@@ -2893,7 +2895,6 @@ class MyClass(GeneratedClass):
                 if re.search('.*bumper.*true.*', ReactToTouch.getTouch(), re.IGNORECASE):
                     self.finish()
                     return
-                print "getting face"
                 face = FaceDetector.getFace();
                 if face != "":
                     break
@@ -2960,8 +2961,6 @@ class MyClass(GeneratedClass):
         self.onStopped() #activate the output of the box
 
     def onInput_onStop(self):
-        # This method will be called when the onInput_onStart() thread ends which will activate the onStopped output
-        # AND this onStopped output is connected to the onStopped output of the Choregraphe bounding box.
         self.onStopped() #activate the output of the box]]>
 </content>
                                                 </script>
@@ -3335,7 +3334,7 @@ class MyClass(GeneratedClass):
                                             <Link inputowner="3" indexofinput="2" outputowner="0" indexofoutput="2" />
                                             <Link inputowner="7" indexofinput="2" outputowner="4" indexofoutput="4" />
                                             <Link inputowner="1" indexofinput="2" outputowner="7" indexofoutput="3" />
-                                            <Link inputowner="0" indexofinput="4" outputowner="1" indexofoutput="4" />
+                                            <Link inputowner="0" indexofinput="5" outputowner="1" indexofoutput="4" />
                                         </Diagram>
                                     </BehaviorKeyframe>
                                 </BehaviorLayer>
@@ -4187,7 +4186,7 @@ class MyClass(GeneratedClass):
                             <Resource name="Right eye leds" type="Lock" timeout="0" />
                             <Resource name="Audio player" type="Lock" timeout="0" />
                         </Box>
-                        <Box name="Macarena" id="2" localization="8" tooltip="" x="516" y="458">
+                        <Box name="Macarena" id="2" localization="8" tooltip="" x="523" y="462">
                             <bitmap>media/images/box/box-diagram.png</bitmap>
                             <script language="4">
                                 <content>
@@ -4202,7 +4201,7 @@ class MyClass(GeneratedClass):
                                 <BehaviorLayer name="behavior_layer1">
                                     <BehaviorKeyframe name="keyframe1" index="1">
                                         <Diagram>
-                                            <Box name="BlinkWink" id="1" localization="8" tooltip="Eyes keep blinking until box is stopped." x="376" y="170">
+                                            <Box name="BlinkWink" id="1" localization="8" tooltip="Eyes keep blinking until box is stopped." x="283" y="262">
                                                 <bitmap>media/images/box/box-diagram.png</bitmap>
                                                 <script language="4">
                                                     <content>
@@ -4265,7 +4264,7 @@ class MyClass(GeneratedClass):
                                                 <Parameter name="speed" inherits_from_parent="0" content_type="2" value="0.1" default_value="0.1" min="0" max="1" tooltip="" id="5" />
                                                 <Parameter name="threshold" inherits_from_parent="0" content_type="2" value="90" default_value="70" min="0" max="100" tooltip="" id="6" />
                                             </Box>
-                                            <Box name="Play Sound" id="4" localization="8" tooltip="Play a sound file. Select the file in parameters. The format of the file can be&#x0A;wav, mp3, or ogg." x="630" y="737">
+                                            <Box name="Play Sound" id="4" localization="8" tooltip="Play a sound file. Select the file in parameters. The format of the file can be&#x0A;wav, mp3, or ogg." x="537" y="829">
                                                 <bitmap>media/images/box/interaction/play_music.png</bitmap>
                                                 <script language="4">
                                                     <content>
@@ -4381,7 +4380,7 @@ class MyClass(GeneratedClass):
                                                     </BehaviorLayer>
                                                 </Timeline>
                                             </Box>
-                                            <Box name="pre-dance" id="8" localization="8" tooltip="sdf" x="625" y="286">
+                                            <Box name="pre-dance" id="8" localization="8" tooltip="sdf" x="532" y="378">
                                                 <bitmap>media/images/box/box-diagram.png</bitmap>
                                                 <script language="4">
                                                     <content>
@@ -4672,7 +4671,7 @@ class MyClass(GeneratedClass):
                                                     </ActuatorList>
                                                 </Timeline>
                                             </Box>
-                                            <Box name="hand clapping" id="9" localization="8" tooltip="" x="820" y="290">
+                                            <Box name="hand clapping" id="9" localization="8" tooltip="" x="727" y="382">
                                                 <bitmap>media/images/box/box-diagram.png</bitmap>
                                                 <script language="4">
                                                     <content>
@@ -5038,7 +5037,7 @@ class MyClass(GeneratedClass):
                                                     </ActuatorList>
                                                 </Timeline>
                                             </Box>
-                                            <Box name="hand clapping (1)" id="10" localization="8" tooltip="" x="1008" y="290">
+                                            <Box name="hand clapping (1)" id="10" localization="8" tooltip="" x="915" y="382">
                                                 <bitmap>media/images/box/box-diagram.png</bitmap>
                                                 <script language="4">
                                                     <content>
@@ -5404,7 +5403,7 @@ class MyClass(GeneratedClass):
                                                     </ActuatorList>
                                                 </Timeline>
                                             </Box>
-                                            <Box name="Set Stiffness" id="6" localization="8" tooltip="Set motors stiffness." x="1477" y="201">
+                                            <Box name="Set Stiffness" id="6" localization="8" tooltip="Set motors stiffness." x="1384" y="293">
                                                 <bitmap>media/images/box/movement/stiffness.png</bitmap>
                                                 <script language="4">
                                                     <content>
@@ -5454,7 +5453,7 @@ class MyClass(GeneratedClass):
                                                 <Parameter name="Motors stiffness (%)" inherits_from_parent="0" content_type="1" value="0" default_value="100" min="0" max="100" tooltip="Stiffness value the motors are set to." id="9" />
                                                 <Parameter name="Duration (s)" inherits_from_parent="0" content_type="2" value="1" default_value="1" min="0.02" max="10" tooltip="How much time to go to the max/min stiffness in seconds." id="10" />
                                             </Box>
-                                            <Box name="macarena" id="3" localization="8" tooltip="" x="1103" y="486">
+                                            <Box name="macarena" id="3" localization="8" tooltip="" x="1010" y="578">
                                                 <bitmap>media/images/box/box-diagram.png</bitmap>
                                                 <script language="4">
                                                     <content>
@@ -5895,7 +5894,7 @@ class MyClass(GeneratedClass):
                                                     </ActuatorList>
                                                 </Timeline>
                                             </Box>
-                                            <Box name="macarena (1)" id="13" localization="8" tooltip="" x="1363" y="515">
+                                            <Box name="macarena (1)" id="13" localization="8" tooltip="" x="1270" y="607">
                                                 <bitmap>media/images/box/box-diagram.png</bitmap>
                                                 <script language="4">
                                                     <content>
@@ -6336,7 +6335,7 @@ class MyClass(GeneratedClass):
                                                     </ActuatorList>
                                                 </Timeline>
                                             </Box>
-                                            <Box name="Stand Up" id="7" localization="8" tooltip="the robot tries to stand up from any position for a number of tries.&#x0A;&#x0A;Note: The number of tries can be set in parameters." x="366" y="342">
+                                            <Box name="Stand Up" id="7" localization="8" tooltip="the robot tries to stand up from any position for a number of tries.&#x0A;&#x0A;Note: The number of tries can be set in parameters." x="270" y="421">
                                                 <bitmap>media/images/box/movement/stand.png</bitmap>
                                                 <script language="4">
                                                     <content>
@@ -6415,7 +6414,7 @@ class MyClass(GeneratedClass):
                                                 </Timeline>
                                                 <Resource name="All motors" type="Lock" timeout="0" />
                                             </Box>
-                                            <Box name="Sit Down" id="2" localization="8" tooltip="the robot tries to sit down from any position for a number of tries.&#x0A;&#x0A;Note: The number of tries can be set in parameters." x="1322" y="307">
+                                            <Box name="Sit Down" id="11" localization="8" tooltip="the robot tries to sit down from any position for a number of tries.&#x0A;&#x0A;Note: The number of tries can be set in parameters." x="1237" y="382">
                                                 <bitmap>media/images/box/movement/sit_ground.png</bitmap>
                                                 <script language="4">
                                                     <content>
@@ -6494,8 +6493,8 @@ class MyClass(GeneratedClass):
                                             <Link inputowner="4" indexofinput="3" outputowner="13" indexofoutput="4" />
                                             <Link inputowner="8" indexofinput="2" outputowner="7" indexofoutput="4" />
                                             <Link inputowner="4" indexofinput="2" outputowner="7" indexofoutput="4" />
-                                            <Link inputowner="2" indexofinput="2" outputowner="13" indexofoutput="4" />
-                                            <Link inputowner="6" indexofinput="2" outputowner="2" indexofoutput="4" />
+                                            <Link inputowner="11" indexofinput="2" outputowner="13" indexofoutput="4" />
+                                            <Link inputowner="6" indexofinput="2" outputowner="11" indexofoutput="4" />
                                             <Link inputowner="1" indexofinput="2" outputowner="0" indexofoutput="2" />
                                             <Link inputowner="7" indexofinput="2" outputowner="0" indexofoutput="2" />
                                             <Link inputowner="0" indexofinput="4" outputowner="6" indexofoutput="3" />
@@ -6508,11 +6507,11 @@ class MyClass(GeneratedClass):
                         <Link inputowner="1" indexofinput="2" outputowner="6" indexofoutput="6" />
                         <Link inputowner="6" indexofinput="2" outputowner="1" indexofoutput="4" />
                         <Link inputowner="6" indexofinput="2" outputowner="6" indexofoutput="4" />
-                        <Link inputowner="2" indexofinput="2" outputowner="6" indexofoutput="7" />
-                        <Link inputowner="6" indexofinput="2" outputowner="2" indexofoutput="4" />
                         <Link inputowner="5" indexofinput="2" outputowner="6" indexofoutput="5" />
                         <Link inputowner="6" indexofinput="2" outputowner="0" indexofoutput="2" />
-                        <Link inputowner="6" indexofinput="2" outputowner="5" indexofoutput="4" />
+                        <Link inputowner="6" indexofinput="2" outputowner="5" indexofoutput="5" />
+                        <Link inputowner="2" indexofinput="2" outputowner="6" indexofoutput="7" />
+                        <Link inputowner="6" indexofinput="2" outputowner="2" indexofoutput="4" />
                     </Diagram>
                 </BehaviorKeyframe>
             </BehaviorLayer>

@@ -51,7 +51,7 @@ class speechRecognitionGoogleModule():
             self.player = ALProxy('ALAudioPlayer')
             self.leds = ALProxy("ALLeds")
         except Exception, e:
-            print str(e)
+            print "speechRecognitionGoogleModule exception: " + str(e)
     def speechToText(self):
         text = ""
         try:
@@ -72,7 +72,7 @@ class speechRecognitionGoogleModule():
             runShellCommandWait('ffmpeg -y -i /home/nao/reneb/speech.ogg /home/nao/reneb/speech.flac')
             stdOutAndErr = runShellCommandWait('curl -s -X POST --header "content-type: audio/x-flac; rate=16000;" --data-binary @"/home/nao/reneb/speech.flac" "http://www.google.com/speech-api/v2/recognize?client=chromium&lang=en_US&key=AIzaSyC3qc74SxJI7fIv747QPlSQPS0rl4AnSAM"')
         except Exception, e:
-            print str(e)
+            print "speechToText exception: " + str(e)
             return text
         # Google always replies with an empty JSON response '{"result":[]}' on the first line.
         # If there is speech, The second line contains the actual JSON result.
@@ -86,13 +86,13 @@ class speechRecognitionGoogleModule():
         try:
             confidence = decoded["result"][0]["alternative"][0]["confidence"]  # not a string but a float
         except Exception, e:
-            print str(e)
+            print "speechToText exception: " + str(e)
             pass
         try:
             # Use encode() to convert the Unicode strings contained in JSON to ASCII.
             text = decoded["result"][0]["alternative"][0]["transcript"].encode('ascii', 'ignore')
         except Exception, e:
-            print str(e)
+            print "speechToText exception: " + str(e)
             pass
 
         return text
@@ -119,7 +119,6 @@ class ReactToTouchModule(ALModule):
     
     def onTouched(self, strVarName, value):
         self.touched = str(value)
-        print str(value)
 
     def getTouch(self):
         if self.touched != "":
@@ -579,7 +578,9 @@ class MyClass(GeneratedClass):
         
     def onUnload(self):
         # Put clean-up code here.
-        # This method is called when the behavior is stopped.
+        # This method is called when the onInput_onStart() thread ends which will activate the onStopped output
+        # AND this onStopped output is connected to the onStopped output of the Choregraphe bounding box.
+        # This method is also called when the behavior is stopped in Choregraphe.
         # The behavior can be stopped in Choregraphe using the red 'Stop' button, or by using the 'Run Behavior'
         # box and activating the 'onStop' input. In Python this means the ALBehaviorManager method stopBehavior() is called.
         # First set self.doContinue to False otherwise the onInput_onStart() thread will continue if it is still running.
@@ -645,7 +646,6 @@ class MyClass(GeneratedClass):
                 if re.search('.*bumper.*true.*', ReactToTouch.getTouch(), re.IGNORECASE):
                     self.finish()
                     return
-                print "getting face"
                 face = FaceDetector.getFace();
                 if face != "":
                     break
@@ -712,8 +712,6 @@ class MyClass(GeneratedClass):
         #self.onStopped() #activate the output of the box
 
     def onInput_onStop(self):
-        # This method will be called when the onInput_onStart() thread ends which will activate the onStopped output
-        # AND this onStopped output is connected to the onStopped output of the Choregraphe bounding box.
         self.onStopped() #activate the output of the box
 
 
