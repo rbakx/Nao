@@ -556,11 +556,18 @@ class GeneratedClass():
 # Main Class containing the standard block methods. When used in Choregraphe this class is initiated automatically by NAOqi.
 class MyClass(GeneratedClass):
     def __init__(self):
-        global SpeechRecognizer, FaceDetector, ReactToTouch
         GeneratedClass.__init__(self)
+        # Do not initialize modules here because in Choregraphe __init__() is called whenever the behavior starts,
+        # even if this block is not started yet. Stopping the behavior will not call onUnload() then which means the module's exit()
+        # function is not called. This gives problems the next time the behavior is started.
+        # Instead, initialize the modules in onLoad(). This method is only called when the block is started. Stopping the behavior in
+        # Choregraphe will then also stop the block by calling onUnload().
+    
+    def onLoad(self):
+        # Put initialization code here
         # Warning: module names must be global variables.
         # The name given to the constructor must be the name of the variable.
-        
+        global SpeechRecognizer, FaceDetector, ReactToTouch
         # Enable one of the two next lines for Nao speech recognition or Google speech recognition
         #SpeechRecognizer = speechRecognitionNaoModule("SpeechRecognizer")
         SpeechRecognizer = speechRecognitionGoogleModule()
@@ -571,10 +578,6 @@ class MyClass(GeneratedClass):
         self.faceListId = "42"
         self.tts = ALProxy("ALTextToSpeech")
         self.doContinue = False
-
-    def onLoad(self):
-        #put initialization code here
-        pass
         
     def onUnload(self):
         # Put clean-up code here.
@@ -623,16 +626,16 @@ class MyClass(GeneratedClass):
         self.audiodevice = ALProxy("ALAudioDevice")
         self.audiodevice.setOutputVolume(50)
         
-        while testConnected() == False:
-            self.tts.say("not connected to the internet")
-            if re.search('.*bumper.*true.*', ReactToTouch.getTouch(), re.IGNORECASE):
-                self.finish()
-                return
-            time.sleep(5)
-        
         self.doContinue = True
         self.tts.say("let's greet some people")
         while self.doContinue:
+            # Check if connected to the internet.
+            while testConnected() == False:
+                self.tts.say("not connected to the internet")
+                if re.search('.*bumper.*true.*', ReactToTouch.getTouch(), re.IGNORECASE):
+                    self.finish()
+                    return
+                time.sleep(5)
             FaceDetector.startFaceDetection()
             FaceDetector.startSoundTracking()
             face = ""
@@ -730,6 +733,7 @@ def main():
         9559)       # parent broker port
 
     myClass = MyClass()
+    myClass.onLoad()
     myClass.onInput_onStart()
     myClass.onUnload()
 
