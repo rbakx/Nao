@@ -630,11 +630,8 @@ class MyClass(GeneratedClass):
         self.tts.say("let's greet some people")
         while self.doContinue:
             # Check if connected to the internet.
-            while testConnected() == False:
+            while self.doContinue and testConnected() == False:
                 self.tts.say("not connected to the internet")
-                if re.search('.*bumper.*true.*', ReactToTouch.getTouch(), re.IGNORECASE):
-                    self.finish()
-                    return
                 time.sleep(5)
             FaceDetector.startFaceDetection()
             FaceDetector.startSoundTracking()
@@ -645,10 +642,6 @@ class MyClass(GeneratedClass):
                     FaceDetector.lookForward()
                     count = 0
                 count = count + 1
-                # Possibility to interrupt by touch.
-                if re.search('.*bumper.*true.*', ReactToTouch.getTouch(), re.IGNORECASE):
-                    self.finish()
-                    return
                 face = FaceDetector.getFace();
                 if face != "":
                     break
@@ -678,11 +671,6 @@ class MyClass(GeneratedClass):
                 if self.doContinue and name == "":
                     self.tts.say("what is your name?")
                     name = SpeechRecognizer.speechToText()
-                    # Possibility to interrupt by touch.
-                    if re.search('.*bumper.*true.*', ReactToTouch.getTouch(), re.IGNORECASE):
-                        self.finish()
-                        return
-                
                     if self.doContinue and name != "":
                         self.tts.say("nice to meet you, " + name + ", please keep still for a moment")
                         if self.faceRecognition.addFaceToList(self.faceListId, "/home/nao/reneb/snapshot.jpg", name) == True:

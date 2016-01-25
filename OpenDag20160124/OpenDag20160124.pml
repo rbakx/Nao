@@ -13,11 +13,11 @@
         <File name="swiftswords_ext" src="behavior_1/swiftswords_ext.mp3" />
         <File name="Macarena - Various Artists" src="behavior_1/Macarena - Various Artists.mp3" />
         <File name="court-boom" src="behavior_1/court-boom.wav" />
+        <File name="" src=".DS_Store" />
+        <File name="Demo" src="Demo.docx" />
     </Resources>
     <Topics>
         <Topic name="ExampleDialog_enu" src="behavior_1/ExampleDialog/ExampleDialog_enu.top" topicName="ExampleDialog" language="enu" />
     </Topics>
-    <IgnoredPaths>
-        <Path src="reneb_main" />
-    </IgnoredPaths>
+    <IgnoredPaths />
 </Package>
