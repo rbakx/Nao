@@ -11,6 +11,8 @@ import re
 import subprocess
 import json
 import httplib, urllib, base64
+import secret
+
 
 from naoqi import ALProxy
 from naoqi import ALBroker
@@ -70,7 +72,7 @@ class speechRecognitionGoogleModule():
             self.recorder.stopMicrophonesRecording()
             self.player.playFile("/usr/share/naoqi/wav/end_reco.wav")
             runShellCommandWait('ffmpeg -y -i /home/nao/reneb/speech.ogg /home/nao/reneb/speech.flac')
-            stdOutAndErr = runShellCommandWait('curl -s -X POST --header "content-type: audio/x-flac; rate=16000;" --data-binary @"/home/nao/reneb/speech.flac" "http://www.google.com/speech-api/v2/recognize?client=chromium&lang=en_US&key=AIzaSyC3qc74SxJI7fIv747QPlSQPS0rl4AnSAM"')
+            stdOutAndErr = runShellCommandWait('curl -s -X POST --header "content-type: audio/x-flac; rate=16000;" --data-binary @"/home/nao/reneb/speech.flac" "http://www.google.com/speech-api/v2/recognize?client=chromium&lang=en_US&key=' + secret.SpeechToTextGoogleApiKey + '"')
         except Exception, e:
             print "speechToText exception: " + str(e)
             return text
@@ -326,7 +328,7 @@ class FaceDetectionModule(ALModule):
 # This class makes use of cloud services to recognize faces.
 class FaceRecognition():
     def __init__(self):
-        self.key = '43acf60f71204ca78c4c09a1cb2c6916'
+        self.key = secret.ProjectOxfordFaceApiKey
 
     def getFaceIdFromNewFace(self, pic):
         headers = {
